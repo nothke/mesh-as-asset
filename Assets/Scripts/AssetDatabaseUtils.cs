@@ -76,21 +76,23 @@ namespace Nothke.Utils
             // Makes sure separators are converted to \
             var dir = new DirectoryInfo(path);
 
-            var strs = dir.ToString().Split('\\');
+            char sep = Path.DirectorySeparatorChar;
+
+            var strs = dir.ToString().Split(sep);
 
             if (strs[0] != "Assets")
             {
-                Debug.LogError("Path needs to start with 'Assets\\'");
+                Debug.LogError("Path needs to start with 'Assets" + sep + "\\");
                 return false;
             }
 
             string curFolderPath = strs[0];
             for (int i = 1; i < strs.Length; i++)
             {
-                if (!AssetDatabase.IsValidFolder(curFolderPath + "\\" + strs[i]))
+                if (!AssetDatabase.IsValidFolder(curFolderPath + sep + strs[i]))
                     AssetDatabase.CreateFolder(curFolderPath, strs[i]);
 
-                curFolderPath += "\\" + strs[i];
+                curFolderPath += sep + strs[i];
             }
 
             return true;
