@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEditor;
 
+using static Nothke.Utils.AssetDatabaseUtils;
+
 [ExecuteInEditMode]
 public class AddToAsset : MonoBehaviour
 {
@@ -8,16 +10,30 @@ public class AddToAsset : MonoBehaviour
 
     public Mesh assetMesh;
 
-    private void Start()
-    {
-    }
+    const string FOLDER_PATH = "Assets/Data/Meshes/";
+    const string FILE_PATH_BASE = FOLDER_PATH + "mesh_";
 
     MeshFilter _mf;
     MeshFilter mf { get { if (!_mf) _mf = GetComponent<MeshFilter>(); return _mf; } }
 
-    [ContextMenu("Make Mesh")]
+    private void Start()
+    {
+        bool validSource = source || (mf && mf.sharedMesh);
+
+        if (validSource && !assetMesh)
+        {
+            MakeMeshFromSource();
+        }
+    }
+
+    [ContextMenu("Make New Mesh")]
     public void MakeMeshFromSource()
     {
+        Debug.Log("Creating new asset..");
+
+        if (assetMesh)
+            DestroyMeshAsset(assetMesh);
+
         if (!source)
             source = mf.sharedMesh;
 
@@ -34,75 +50,54 @@ public class AddToAsset : MonoBehaviour
         mf.sharedMesh = mesh;
     }
 
-    bool MeshAssetExists(in string path)
-    {
-        return AssetDatabase.LoadAssetAtPath<Mesh>(path) != null;
-    }
+#if UNITY_EDITOR
 
     void CreateMeshAsset(Mesh mesh)
     {
-        if (!AssetDatabase.IsValidFolder("Assets/Data"))
-            AssetDatabase.CreateFolder("Assets", "Data");
-
-        if (!AssetDatabase.IsValidFolder("Assets/Data/Meshes"))
-            AssetDatabase.CreateFolder("Assets/Data", "Meshes");
-
-        //string[] guids = AssetDatabase.FindAssets("", new[] { "Assets/Data/Meshes" });
-        //Debug.Log("Found guids: " + guids.Length);
-
         int next = 0;
-        //bool found = false;
         string path;
+
         do
         {
-            path = "Assets/Data/Meshes/mesh_" + next + ".asset";
-            //found = MeshAssetExists(path);
+            path = FILE_PATH_BASE + next + ".asset";
             next++;
-        } while (MeshAssetExists(path));
+        } while (AssetExists(path));
 
-        /*
-        for (int i = 0; i < guids.Length; i++)
-        {
-            var str = AssetDatabase.GUIDToAssetPath(guids[i]);
+        CreateAsset(mesh, path);
 
-            Debug.Log("Found asset: " + str);
-
-            if (!str.Contains("mesh_" + i))
-            {
-                Debug.Log("Doesn't have " + i);
-                next = i;
-                break;
-            }
-        }*/
-
-        //string path = "Assets/Data/Meshes/mesh_" + next + ".asset";
-
-        //assetMesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
-        AssetDatabase.CreateAsset(mesh, path);
-
-        assetMesh = mesh;
+        // Using a serialized property makes sure the change gets detected by the scene/prefab
+        SerializedObject so = new SerializedObject(this);
+        so.FindProperty("assetMesh").objectReferenceValue = mesh;
+        so.ApplyModifiedProperties();
     }
 
     private void OnDestroy()
     {
-        if (!Application.isPlaying)
+        // isLoaded prevents it being run when scene is changed
+        if (!Application.isPlaying && gameObject.scene.isLoaded)
         {
             if (assetMesh)
-            {
-                string path = AssetDatabase.GetAssetPath(assetMesh);
-
-                if (!string.IsNullOrEmpty(path))
-                {
-                    bool success = AssetDatabase.DeleteAsset(path);
-
-                    if (!success)
-                        Debug.LogError("Did not destroy correctly");
-                }
-
-                DestroyImmediate(assetMesh);
-
-                Debug.Log("Destroyed " + path);
-            }
+                DestroyMeshAsset(assetMesh);
         }
     }
+
+    void DestroyMeshAsset(Mesh asset)
+    {
+        // Destroy the asset
+        string path = AssetDatabase.GetAssetPath(asset);
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            bool success = AssetDatabase.DeleteAsset(path);
+
+            if (!success)
+                Debug.LogError("Did not destroy correctly");
+        }
+
+        // Destroying the mesh itself is also necessary
+        DestroyImmediate(asset);
+
+        Debug.Log("Destroyed " + path);
+    }
+#endif
 }
