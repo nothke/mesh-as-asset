@@ -1,7 +1,9 @@
 using UnityEngine;
 using UnityEditor;
 
+#if UNITY_EDITOR
 using static Nothke.Utils.AssetDatabaseUtils;
+#endif
 
 [ExecuteInEditMode]
 public class AddToAsset : MonoBehaviour
@@ -16,6 +18,7 @@ public class AddToAsset : MonoBehaviour
     MeshFilter _mf;
     MeshFilter mf { get { if (!_mf) _mf = GetComponent<MeshFilter>(); return _mf; } }
 
+#if UNITY_EDITOR
     private void Start()
     {
         bool validSource = source || (mf && mf.sharedMesh);
@@ -50,7 +53,6 @@ public class AddToAsset : MonoBehaviour
         mf.sharedMesh = mesh;
     }
 
-#if UNITY_EDITOR
 
     void CreateMeshAsset(Mesh mesh)
     {
